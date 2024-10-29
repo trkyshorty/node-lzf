@@ -1,52 +1,42 @@
 /* node-lzf (C) 2011 Ian Babrou <ibobrik@gmail.com>  */
 
 #include <node_buffer.h>
-#include <stdlib.h>
-
-#ifdef __APPLE__
-#include <malloc/malloc.h>
-#endif
-
-#include "nan.h"
-
+#include <nan.h>
 #include "lzf/lzf.h"
-
 
 using namespace v8;
 using namespace node;
 
+inline void ThrowNodeError(const char* what) {
+    Nan::ThrowError(Nan::New<String>(std::string(what) + "- Error: " + std::to_string(errno)).ToLocalChecked());
+}
 
-// Handle<Value> ThrowNodeError(const char* what = NULL) {
-//     return Nan::ThrowError(Exception::Error(Nan::New<String>(what)));
-// }
 NAN_METHOD(compress) {
     if (info.Length() < 1 || !Buffer::HasInstance(info[0])) {
         return Nan::ThrowError("First argument must be a Buffer");
     }
 
-    Local<Value> bufferIn  = info[0];
-    size_t bytesIn         = Buffer::Length(bufferIn);
-    char * dataPointer     = Buffer::Data(bufferIn);
+    Local<Value> bufferIn = info[0];
+    size_t bytesIn = Buffer::Length(bufferIn);
+    char* dataPointer = Buffer::Data(bufferIn);
+    
     size_t bytesCompressed = bytesIn + 100;
-    char * bufferOut       = (char*) malloc(bytesCompressed);
+    Nan::MaybeLocal<Object> BufferOut = Nan::NewBuffer(bytesCompressed);
 
-    if (!bufferOut) {
-        return Nan::ThrowError("LZF malloc failed!");
+    if (BufferOut.IsEmpty()) {
+        return Nan::ThrowError("Buffer allocation failed!");
     }
+
+    char* bufferOut = node::Buffer::Data(BufferOut.ToLocalChecked());
 
     unsigned result = lzf_compress(dataPointer, bytesIn, bufferOut, bytesCompressed);
 
     if (!result) {
-        free(bufferOut);
-        return Nan::ThrowError("Compression failed, probably too small buffer");
+        return ThrowNodeError("Compression failed, probably too small buffer");
     }
 
-    bufferOut = (char*) realloc (bufferOut, result);
-    Nan::MaybeLocal<Object> BufferOut = Nan::NewBuffer(bufferOut, result);
-
-    info.GetReturnValue().Set(BufferOut.ToLocalChecked());
+    info.GetReturnValue().Set(Nan::NewBuffer(bufferOut, result).ToLocalChecked());
 }
-
 
 NAN_METHOD(decompress) {
     if (info.Length() < 1 || !Buffer::HasInstance(info[0])) {
@@ -54,29 +44,27 @@ NAN_METHOD(decompress) {
     }
 
     Local<Value> bufferIn = info[0];
+    size_t bytesUncompressed = 999 * 1024 * 1024;
 
-    size_t bytesUncompressed = 999 * 1024 * 1024; // it's about max size that V8 supports
-
-    if (info.Length() > 1 && info[1]->IsNumber()) { // accept dest buffer size
+    if (info.Length() > 1 && info[1]->IsNumber()) {
         bytesUncompressed = Nan::To<uint32_t>(info[1]).FromJust();
     }
 
+    Nan::MaybeLocal<Object> BufferOut = Nan::NewBuffer(bytesUncompressed);
 
-    char * bufferOut = (char*) malloc(bytesUncompressed);
-    if (!bufferOut) {
-        return Nan::ThrowError("LZF malloc failed!");
+    if (BufferOut.IsEmpty()) {
+        return Nan::ThrowError("Buffer allocation failed!");
     }
+
+    char* bufferOut = node::Buffer::Data(BufferOut.ToLocalChecked());
 
     unsigned result = lzf_decompress(Buffer::Data(bufferIn), Buffer::Length(bufferIn), bufferOut, bytesUncompressed);
 
     if (!result) {
-        return Nan::ThrowError("Unrompression failed, probably too small buffer");
+        return ThrowNodeError("Decompression failed, probably too small buffer");
     }
 
-    bufferOut = (char*) realloc (bufferOut, result);
-    Nan::MaybeLocal<Object> BufferOut = Nan::NewBuffer(bufferOut, result);
-
-    info.GetReturnValue().Set(BufferOut.ToLocalChecked());
+    info.GetReturnValue().Set(Nan::NewBuffer(bufferOut, result).ToLocalChecked());
 }
 
 extern "C" void init(Local<Object> exports, Local<Value> module, Local<Context> context) {
