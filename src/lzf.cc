@@ -27,7 +27,7 @@ NAN_METHOD(compress) {
     Local<Value> bufferIn  = info[0];
     size_t bytesIn         = Buffer::Length(bufferIn);
     char * dataPointer     = Buffer::Data(bufferIn);
-    size_t bytesCompressed = bytesIn + 100;
+    size_t bytesCompressed = bytesIn + (bytesIn / 16) + 64 + 3;
     char * bufferOut       = (char*) malloc(bytesCompressed);
 
     if (!bufferOut) {
