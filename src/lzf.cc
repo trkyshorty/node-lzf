@@ -1,4 +1,5 @@
 /* node-lzf (C) 2011 Ian Babrou <ibobrik@gmail.com>  */
+/* node-lzf (C) 2024 Maintained Türkay Tanrikulu <trky.shorty@gmail.com>  */
 
 #include <node_buffer.h>
 #include <stdlib.h>
@@ -11,10 +12,8 @@
 
 #include "lzf/lzf.h"
 
-
 using namespace v8;
 using namespace node;
-
 
 // Handle<Value> ThrowNodeError(const char* what = NULL) {
 //     return Nan::ThrowError(Exception::Error(Nan::New<String>(what)));
@@ -27,7 +26,7 @@ NAN_METHOD(compress) {
     Local<Value> bufferIn  = info[0];
     size_t bytesIn         = Buffer::Length(bufferIn);
     char * dataPointer     = Buffer::Data(bufferIn);
-    size_t bytesCompressed = bytesIn + 100;
+    size_t bytesCompressed = bytesIn + (bytesIn / 16) + 64 + 3;
     char * bufferOut       = (char*) malloc(bytesCompressed);
 
     if (!bufferOut) {
