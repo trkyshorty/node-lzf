@@ -1,4 +1,5 @@
 /* node-lzf (C) 2011 Ian Babrou <ibobrik@gmail.com>  */
+/* node-lzf (C) 2024 Maintained Türkay Tanrikulu <trky.shorty@gmail.com>  */
 
 #include <node_buffer.h>
 #include <stdlib.h>
@@ -11,10 +12,8 @@
 
 #include "lzf/lzf.h"
 
-
 using namespace v8;
 using namespace node;
-
 
 // Handle<Value> ThrowNodeError(const char* what = NULL) {
 //     return Nan::ThrowError(Exception::Error(Nan::New<String>(what)));
