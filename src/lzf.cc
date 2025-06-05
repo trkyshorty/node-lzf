@@ -9,48 +9,55 @@ using namespace v8;
 using namespace node;
 
 NAN_METHOD(compress) {
-    if (info.Length() < 1 || !info[0]->IsObject() || !Buffer::HasInstance(info[0])) {
+    if (info.Length() < 1 || !Buffer::HasInstance(info[0])) {
         return Nan::ThrowTypeError("First argument must be a Buffer");
     }
 
-    Local<Object> inputBuf = Nan::To<Object>(info[0]).ToLocalChecked();
-    char* inputData = Buffer::Data(inputBuf);
-    size_t inputLen = Buffer::Length(inputBuf);
+    Local<Object> input = info[0].As<Object>();
+    char* inputData = Buffer::Data(input);
+    size_t inputLen = Buffer::Length(input);
 
-    size_t maxOutputLen = inputLen + (inputLen / 16) + 64 + 3;
-    std::unique_ptr<char[]> output(new char[maxOutputLen]);
+    size_t maxOut = inputLen + (inputLen / 16) + 64 + 3;
+    char* outBuf = new char[maxOut];
 
-    unsigned int compressedLen = lzf_compress(inputData, inputLen, output.get(), maxOutputLen);
-    if (compressedLen == 0) {
+    unsigned int outLen = lzf_compress(inputData, inputLen, outBuf, maxOut);
+    if (outLen == 0) {
+        delete[] outBuf;
         return Nan::ThrowError("Compression failed");
     }
 
-    info.GetReturnValue().Set(Nan::CopyBuffer(output.get(), compressedLen).ToLocalChecked());
+    info.GetReturnValue().Set(Nan::NewBuffer(outBuf, outLen, [](char* data, void*) {
+        delete[] data;
+    }, nullptr).ToLocalChecked());
 }
 
 NAN_METHOD(decompress) {
-    if (info.Length() < 1 || !info[0]->IsObject() || !Buffer::HasInstance(info[0])) {
+    if (info.Length() < 1 || !Buffer::HasInstance(info[0])) {
         return Nan::ThrowTypeError("First argument must be a Buffer");
     }
 
-    Local<Object> inputBuf = Nan::To<Object>(info[0]).ToLocalChecked();
-    char* inputData = Buffer::Data(inputBuf);
-    size_t inputLen = Buffer::Length(inputBuf);
+    Local<Object> input = info[0].As<Object>();
+    char* inputData = Buffer::Data(input);
+    size_t inputLen = Buffer::Length(input);
 
-    size_t expectedOutLen = 1024 * 1024 * 100;
+    size_t expectedLen = 1024 * 1024 * 10;
     if (info.Length() > 1 && info[1]->IsNumber()) {
-        expectedOutLen = Nan::To<uint32_t>(info[1]).FromJust();
+        expectedLen = Nan::To<uint32_t>(info[1]).FromJust();
     }
 
-    std::unique_ptr<char[]> output(new char[expectedOutLen]);
+    char* outBuf = new char[expectedLen];
+    unsigned int outLen = lzf_decompress(inputData, inputLen, outBuf, expectedLen);
 
-    unsigned int decompressedLen = lzf_decompress(inputData, inputLen, output.get(), expectedOutLen);
-    if (decompressedLen == 0) {
+    if (outLen == 0) {
+        delete[] outBuf;
         return Nan::ThrowError("Decompression failed");
     }
 
-    info.GetReturnValue().Set(Nan::CopyBuffer(output.get(), decompressedLen).ToLocalChecked());
+    info.GetReturnValue().Set(Nan::NewBuffer(outBuf, outLen, [](char* data, void*) {
+        delete[] data;
+    }, nullptr).ToLocalChecked());
 }
+
 
 NAN_MODULE_INIT(init) {
     Nan::SetMethod(target, "compress", compress);
