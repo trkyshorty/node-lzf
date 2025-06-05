@@ -27,7 +27,7 @@ NAN_METHOD(compress) {
     Local<Value> bufferIn  = info[0];
     size_t bytesIn         = Buffer::Length(bufferIn);
     char * dataPointer     = Buffer::Data(bufferIn);
-    size_t bytesCompressed = bytesIn + 100;
+    size_t bytesCompressed = bytesIn + (bytesIn / 16) + 64 + 3;
     char * bufferOut       = (char*) malloc(bytesCompressed);
 
     if (!bufferOut) {
@@ -38,15 +38,20 @@ NAN_METHOD(compress) {
 
     if (!result) {
         free(bufferOut);
-        return Nan::ThrowError("Compression failed, probably too small buffer");
+        return Nan::ThrowError("Compression failed");
     }
 
-    bufferOut = (char*) realloc (bufferOut, result);
-    Nan::MaybeLocal<Object> BufferOut = Nan::NewBuffer(bufferOut, result);
+    // Optional: shrink allocation
+    char* finalBuffer = (char*) malloc(result);
+    memcpy(finalBuffer, bufferOut, result);
+    free(bufferOut);
 
-    info.GetReturnValue().Set(BufferOut.ToLocalChecked());
+    info.GetReturnValue().Set(
+        Nan::NewBuffer(finalBuffer, result, [](char* data, void*) {
+            free(data);
+        }, nullptr).ToLocalChecked()
+    );
 }
-
 
 NAN_METHOD(decompress) {
     if (info.Length() < 1 || !Buffer::HasInstance(info[0])) {
@@ -54,13 +59,11 @@ NAN_METHOD(decompress) {
     }
 
     Local<Value> bufferIn = info[0];
+    size_t bytesUncompressed = 999 * 1024 * 1024;
 
-    size_t bytesUncompressed = 999 * 1024 * 1024; // it's about max size that V8 supports
-
-    if (info.Length() > 1 && info[1]->IsNumber()) { // accept dest buffer size
-        bytesUncompressed = info[1]->Uint32Value();
+    if (info.Length() > 1 && info[1]->IsNumber()) {
+        bytesUncompressed = Nan::To<uint32_t>(info[1]).FromJust();
     }
-
 
     char * bufferOut = (char*) malloc(bytesUncompressed);
     if (!bufferOut) {
@@ -70,13 +73,19 @@ NAN_METHOD(decompress) {
     unsigned result = lzf_decompress(Buffer::Data(bufferIn), Buffer::Length(bufferIn), bufferOut, bytesUncompressed);
 
     if (!result) {
-        return Nan::ThrowError("Unrompression failed, probably too small buffer");
+        free(bufferOut);
+        return Nan::ThrowError("Decompression failed");
     }
 
-    bufferOut = (char*) realloc (bufferOut, result);
-    Nan::MaybeLocal<Object> BufferOut = Nan::NewBuffer(bufferOut, result);
+    char* finalBuffer = (char*) malloc(result);
+    memcpy(finalBuffer, bufferOut, result);
+    free(bufferOut);
 
-    info.GetReturnValue().Set(BufferOut.ToLocalChecked());
+    info.GetReturnValue().Set(
+        Nan::NewBuffer(finalBuffer, result, [](char* data, void*) {
+            free(data);
+        }, nullptr).ToLocalChecked()
+    );
 }
 
 extern "C" void
