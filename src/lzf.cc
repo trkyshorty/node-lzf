@@ -12,47 +12,50 @@ using namespace v8;
 using namespace node;
 
 NAN_METHOD(compress) {
-    if (info.Length() < 1 || !Buffer::HasInstance(info[0])) {
-        return Nan::ThrowError("First argument must be a Buffer");
+    if (info.Length() < 1 || !info[0]->IsObject() || !node::Buffer::HasInstance(info[0])) {
+        return Nan::ThrowTypeError("First argument must be a Buffer");
     }
 
-    char* dataIn = Buffer::Data(info[0]);
-    uint32_t lenIn = Buffer::Length(info[0]);
+    Local<Object> inBuf = Nan::To<Object>(info[0]).ToLocalChecked();
+    char* dataIn = node::Buffer::Data(inBuf);
+    size_t lenIn = node::Buffer::Length(inBuf);
 
-    uint32_t maxCompressedLen = lenIn + (lenIn / 16) + 64 + 3;
-
-    // Allocate Node.js-managed buffer
+    size_t maxCompressedLen = lenIn + (lenIn / 16) + 64 + 3;
     auto maybeBuf = Nan::NewBuffer(maxCompressedLen);
     if (maybeBuf.IsEmpty()) {
         return Nan::ThrowError("Failed to allocate output buffer");
     }
 
     Local<Object> outBuf = maybeBuf.ToLocalChecked();
-    char* outData = Buffer::Data(outBuf);
+    char* outData = node::Buffer::Data(outBuf);
 
     unsigned int compressedLen = lzf_compress(dataIn, lenIn, outData, maxCompressedLen);
     if (compressedLen == 0) {
         return Nan::ThrowError("Compression failed");
     }
 
-    // Slice buffer to actual compressed length (no copy)
-    info.GetReturnValue().Set(outBuf->Get(Nan::GetCurrentContext(), Nan::New("slice").ToLocalChecked())
-        .ToLocalChecked().As<Function>()->Call(Nan::GetCurrentContext(), outBuf, 2,
-            new Local<Value>[2]{
-                Nan::New(0),
-                Nan::New((uint32_t)compressedLen)
-            }).ToLocalChecked());
+    // Avoid .Get + .Call + new[]
+    Local<Function> sliceFn = outBuf->Get(Nan::GetCurrentContext(), Nan::New("slice").ToLocalChecked())
+        .ToLocalChecked().As<Function>();
+    Local<Value> args[] = {
+        Nan::New(0),
+        Nan::New((uint32_t)compressedLen)
+    };
+    Local<Value> sliced = sliceFn->Call(Nan::GetCurrentContext(), outBuf, 2, args).ToLocalChecked();
+
+    info.GetReturnValue().Set(sliced);
 }
 
 NAN_METHOD(decompress) {
-    if (info.Length() < 1 || !Buffer::HasInstance(info[0])) {
-        return Nan::ThrowError("First argument must be a Buffer");
+    if (info.Length() < 1 || !info[0]->IsObject() || !node::Buffer::HasInstance(info[0])) {
+        return Nan::ThrowTypeError("First argument must be a Buffer");
     }
 
-    char* dataIn = Buffer::Data(info[0]);
-    uint32_t lenIn = Buffer::Length(info[0]);
+    Local<Object> inBuf = Nan::To<Object>(info[0]).ToLocalChecked();
+    char* dataIn = node::Buffer::Data(inBuf);
+    size_t lenIn = node::Buffer::Length(inBuf);
 
-    uint32_t expectedOutLen = 999 * 1024 * 1024;
+    size_t expectedOutLen = 999 * 1024 * 1024;
     if (info.Length() > 1 && info[1]->IsNumber()) {
         expectedOutLen = Nan::To<uint32_t>(info[1]).FromJust();
     }
@@ -63,25 +66,27 @@ NAN_METHOD(decompress) {
     }
 
     Local<Object> outBuf = maybeBuf.ToLocalChecked();
-    char* outData = Buffer::Data(outBuf);
+    char* outData = node::Buffer::Data(outBuf);
 
     unsigned int decompressedLen = lzf_decompress(dataIn, lenIn, outData, expectedOutLen);
     if (decompressedLen == 0) {
         return Nan::ThrowError("Decompression failed");
     }
 
-    // Slice to decompressed size (no copy)
-    info.GetReturnValue().Set(outBuf->Get(Nan::GetCurrentContext(), Nan::New("slice").ToLocalChecked())
-        .ToLocalChecked().As<Function>()->Call(Nan::GetCurrentContext(), outBuf, 2,
-            new Local<Value>[2]{
-                Nan::New(0),
-                Nan::New((uint32_t)decompressedLen)
-            }).ToLocalChecked());
+    Local<Function> sliceFn = outBuf->Get(Nan::GetCurrentContext(), Nan::New("slice").ToLocalChecked())
+        .ToLocalChecked().As<Function>();
+    Local<Value> args[] = {
+        Nan::New(0),
+        Nan::New((uint32_t)decompressedLen)
+    };
+    Local<Value> sliced = sliceFn->Call(Nan::GetCurrentContext(), outBuf, 2, args).ToLocalChecked();
+
+    info.GetReturnValue().Set(sliced);
 }
 
-extern "C" void init(Local<Object> exports) {
-    Nan::SetMethod(exports, "compress", compress);
-    Nan::SetMethod(exports, "decompress", decompress);
+NAN_MODULE_INIT(init) {
+    Nan::SetMethod(target, "compress", compress);
+    Nan::SetMethod(target, "decompress", decompress);
 }
 
 NODE_MODULE(lzf, init)
