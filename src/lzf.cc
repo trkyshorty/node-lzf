@@ -1,3 +1,6 @@
+/* node-lzf (C) 2011 Ian Babrou <ibobrik@gmail.com>  */
+/* node-lzf (C) 2025 Maintained Türkay Tanrikulu <trky.shorty@gmail.com>  */
+
 #include <node_buffer.h>
 #include <stdlib.h>
 
