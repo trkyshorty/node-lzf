@@ -4,8 +4,8 @@
       "target_name": "lzf",
       "sources": [
         "src/lzf.cc",
-        "src/lzf/lzf_c.c",
-        "src/lzf/lzf_d.c"
+        "src/lzf/lzf_c.cc",
+        "src/lzf/lzf_d.cc"
       ],
       "include_dirs": [
         "<!(node -e \"require('nan')\")",
