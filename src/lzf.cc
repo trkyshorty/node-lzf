@@ -1,93 +1,67 @@
 /* node-lzf (C) 2011 Ian Babrou <ibobrik@gmail.com>  */
-/* node-lzf (C) 2024 Maintained Türkay Tanrikulu <trky.shorty@gmail.com>  */
+/* node-lzf (C) 2025 Maintained Türkay Tanrikulu <trky.shorty@gmail.com>  */
 
 #include <node_buffer.h>
-#include <stdlib.h>
-
-#ifdef __APPLE__
-#include <malloc/malloc.h>
-#endif
-
 #include "nan.h"
-
 #include "lzf/lzf.h"
 
 using namespace v8;
 using namespace node;
 
-// Handle<Value> ThrowNodeError(const char* what = NULL) {
-//     return Nan::ThrowError(Exception::Error(Nan::New<String>(what)));
-// }
 NAN_METHOD(compress) {
     if (info.Length() < 1 || !Buffer::HasInstance(info[0])) {
-        return Nan::ThrowError("First argument must be a Buffer");
+        return Nan::ThrowTypeError("First argument must be a Buffer");
     }
 
-    Local<Value> bufferIn  = info[0];
-    size_t bytesIn         = Buffer::Length(bufferIn);
-    char * dataPointer     = Buffer::Data(bufferIn);
-    size_t bytesCompressed = bytesIn + (bytesIn / 16) + 64 + 3;
-    char * bufferOut       = (char*) malloc(bytesCompressed);
+    Local<Object> input = info[0].As<Object>();
+    char* inputData = Buffer::Data(input);
+    size_t inputLen = Buffer::Length(input);
 
-    if (!bufferOut) {
-        return Nan::ThrowError("LZF malloc failed!");
+    size_t maxOut = inputLen + (inputLen / 16) + 64 + 3;
+    char* outBuf = new char[maxOut];
+
+    unsigned int outLen = lzf_compress(inputData, inputLen, outBuf, maxOut);
+    if (outLen == 0) {
+        delete[] outBuf;
+        return Nan::ThrowError("Compression failed");
     }
 
-    unsigned result = lzf_compress(dataPointer, bytesIn, bufferOut, bytesCompressed);
-
-    if (!result) {
-        free(bufferOut);
-        return Nan::ThrowError("Compression failed, probably too small buffer");
-    }
-
-    bufferOut = (char*) realloc (bufferOut, result);
-    Nan::MaybeLocal<Object> BufferOut = Nan::NewBuffer(bufferOut, result);
-
-    info.GetReturnValue().Set(BufferOut.ToLocalChecked());
+    info.GetReturnValue().Set(Nan::NewBuffer(outBuf, outLen, [](char* data, void*) {
+        delete[] data;
+    }, nullptr).ToLocalChecked());
 }
-
 
 NAN_METHOD(decompress) {
     if (info.Length() < 1 || !Buffer::HasInstance(info[0])) {
-        return Nan::ThrowError("First argument must be a Buffer");
+        return Nan::ThrowTypeError("First argument must be a Buffer");
     }
 
-    Local<Value> bufferIn = info[0];
+    Local<Object> input = info[0].As<Object>();
+    char* inputData = Buffer::Data(input);
+    size_t inputLen = Buffer::Length(input);
 
-    size_t bytesUncompressed = 999 * 1024 * 1024; // it's about max size that V8 supports
-
-    if (info.Length() > 1 && info[1]->IsNumber()) { // accept dest buffer size
-        bytesUncompressed = Nan::To<uint32_t>(info[1]).FromJust();
+    size_t expectedLen = 1024 * 1024 * 10;
+    if (info.Length() > 1 && info[1]->IsNumber()) {
+        expectedLen = Nan::To<uint32_t>(info[1]).FromJust();
     }
 
+    char* outBuf = new char[expectedLen];
+    unsigned int outLen = lzf_decompress(inputData, inputLen, outBuf, expectedLen);
 
-    char * bufferOut = (char*) malloc(bytesUncompressed);
-    if (!bufferOut) {
-        return Nan::ThrowError("LZF malloc failed!");
+    if (outLen == 0) {
+        delete[] outBuf;
+        return Nan::ThrowError("Decompression failed");
     }
 
-    unsigned result = lzf_decompress(Buffer::Data(bufferIn), Buffer::Length(bufferIn), bufferOut, bytesUncompressed);
-
-    if (!result) {
-        return Nan::ThrowError("Unrompression failed, probably too small buffer");
-    }
-
-    bufferOut = (char*) realloc (bufferOut, result);
-    Nan::MaybeLocal<Object> BufferOut = Nan::NewBuffer(bufferOut, result);
-
-    info.GetReturnValue().Set(BufferOut.ToLocalChecked());
+    info.GetReturnValue().Set(Nan::NewBuffer(outBuf, outLen, [](char* data, void*) {
+        delete[] data;
+    }, nullptr).ToLocalChecked());
 }
 
-extern "C" void init(Local<Object> exports, Local<Value> module, Local<Context> context) {
-    Nan::HandleScope scope;
 
-    if (!exports->IsObject() || exports->IsNull()) {
-        Nan::ThrowTypeError("Target object is not valid");
-        return;
-    }
-
-    Nan::SetMethod(exports.As<Object>(), "compress", compress);
-    Nan::SetMethod(exports.As<Object>(), "decompress", decompress);
+NAN_MODULE_INIT(init) {
+    Nan::SetMethod(target, "compress", compress);
+    Nan::SetMethod(target, "decompress", decompress);
 }
 
 NODE_MODULE(lzf, init)
