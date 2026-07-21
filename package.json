@@ -1,7 +1,7 @@
 {
-    "name": "lzf",
-    "version": "0.4.0",
-    "description": "lzf compression module for nodejs",
+    "name": "@trkyshorty/node-lzf",
+    "version": "1.0.0",
+    "description": "lzf compression module for nodejs (Topface/node-lzf fork with mem-leak fix)",
     "keywords": ["lzf", "compression", "buffer"],
     "author": "Ian Babrou <ibobrik@gmail.com>",
     "engines": [
@@ -9,7 +9,7 @@
     ],
     "repository": {
         "type": "git",
-        "url": "git://github.com/Topface/node-lzf.git"
+        "url": "git+https://github.com/trkyshorty/node-lzf.git"
     },
     "dependencies": {
         "nan": "^2.18.0"
@@ -18,6 +18,7 @@
         "lib": "./lib"
     },
     "main": "./index",
+    "gypfile": true,
     "scripts": {
         "test": "node test/test.js"
     },
