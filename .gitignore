@@ -1,3 +1,6 @@
 .idea
 build
 .lock-wscript
+node_modules
+prebuilds
+package-lock.json

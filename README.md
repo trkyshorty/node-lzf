@@ -12,10 +12,26 @@ LZF advantages:
 * Tunable, see the file lzfP.h in the distribution, to tailor liblzf to your needs. The generated compressed blocks can be decompressed by any liblzf version regardless of the options used to compress.
 * Freely usable (BSD-type-license)
 
+### Install
+
+```bash
+npm install @trkyshorty/node-lzf
+```
+
+The module is N-API based and ships prebuilt binaries (`prebuilds/`) for
+linux-x64, linux-arm64 and win32-x64 — no compiler toolchain is needed on
+those platforms. On other platforms it falls back to compiling from source
+via `node-gyp-build` (requires a C++ toolchain).
+
+Prebuilds are produced by the `prebuild` GitHub Actions workflow
+(`npm run prebuild` runs `prebuildify --napi --strip` for the current
+platform). Before `npm publish`, download the merged `prebuilds` artifact
+from the workflow run and place it in the package root as `prebuilds/`.
+
 ### Usage
 
 ```javascript
-var lzf = require("lzf");
+var lzf = require("@trkyshorty/node-lzf");
 
 
 var lorem = "Lorem ipsum dolor sit amet, consectetur adipiscing elit." +
@@ -80,5 +96,13 @@ Fastest is lzf-decompress
 ```
 
 ---
+
 ### Authors
-- Ian Babrou (ibobrik@gmail.com)
+
+* Ian Babrou (`ibobrik@gmail.com`) — original author
+* Türkay Tanrikulu (`trky.shorty@gmail.com`) — fork maintainer
+
+### License
+
+BSD-2-Clause, see [LICENSE](LICENSE). Bundles [liblzf](http://oldhome.schmorp.de/marc/liblzf.html)
+by Marc Alexander Lehmann (BSD-2-Clause / GPL dual-licensed).

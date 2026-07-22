@@ -1,95 +1,78 @@
 /* node-lzf (C) 2011 Ian Babrou <ibobrik@gmail.com>  */
 /* node-lzf (C) 2025 Maintained Türkay Tanrikulu <trky.shorty@gmail.com>  */
 
-#include <node_buffer.h>
-#include <stdlib.h>
-
-#ifdef __APPLE__
-#include <malloc/malloc.h>
-#endif
-
-#include "nan.h"
+#include <napi.h>
 #include "lzf/lzf.h"
 
-using namespace v8;
-using namespace node;
+namespace {
 
-NAN_METHOD(compress) {
-    if (info.Length() < 1 || !info[0]->IsObject() || !node::Buffer::HasInstance(info[0])) {
-        return Nan::ThrowTypeError("First argument must be a Buffer");
+Napi::Value Compress(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+
+    if (info.Length() < 1 || !info[0].IsBuffer()) {
+        Napi::TypeError::New(env, "First argument must be a Buffer").ThrowAsJavaScriptException();
+        return env.Undefined();
     }
 
-    Local<Object> inBuf = Nan::To<Object>(info[0]).ToLocalChecked();
-    char* dataIn = node::Buffer::Data(inBuf);
-    size_t lenIn = node::Buffer::Length(inBuf);
+    Napi::Buffer<char> input = info[0].As<Napi::Buffer<char>>();
+    size_t lenIn = input.Length();
 
     size_t maxCompressedLen = lenIn + (lenIn / 16) + 64 + 3;
-    auto maybeBuf = Nan::NewBuffer(maxCompressedLen);
-    if (maybeBuf.IsEmpty()) {
-        return Nan::ThrowError("Failed to allocate output buffer");
-    }
+    Napi::Buffer<char> output = Napi::Buffer<char>::New(env, maxCompressedLen);
 
-    Local<Object> outBuf = maybeBuf.ToLocalChecked();
-    char* outData = node::Buffer::Data(outBuf);
+    unsigned int compressedLen = lzf_compress(
+        input.Data(), (unsigned int)lenIn,
+        output.Data(), (unsigned int)maxCompressedLen);
 
-    unsigned int compressedLen = lzf_compress(dataIn, lenIn, outData, maxCompressedLen);
     if (compressedLen == 0) {
-        return Nan::ThrowError("Compression failed");
+        Napi::Error::New(env, "Compression failed").ThrowAsJavaScriptException();
+        return env.Undefined();
     }
 
-    // Avoid .Get + .Call + new[]
-    Local<Function> sliceFn = outBuf->Get(Nan::GetCurrentContext(), Nan::New("slice").ToLocalChecked())
-        .ToLocalChecked().As<Function>();
-    Local<Value> args[] = {
-        Nan::New(0),
-        Nan::New((uint32_t)compressedLen)
-    };
-    Local<Value> sliced = sliceFn->Call(Nan::GetCurrentContext(), outBuf, 2, args).ToLocalChecked();
-
-    info.GetReturnValue().Set(sliced);
+    /* Copy to an exact-sized buffer instead of returning a slice view, so the
+     * oversized scratch allocation is not kept alive by the returned Buffer. */
+    return Napi::Buffer<char>::Copy(env, output.Data(), compressedLen);
 }
 
-NAN_METHOD(decompress) {
-    if (info.Length() < 1 || !info[0]->IsObject() || !node::Buffer::HasInstance(info[0])) {
-        return Nan::ThrowTypeError("First argument must be a Buffer");
+Napi::Value Decompress(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+
+    if (info.Length() < 1 || !info[0].IsBuffer()) {
+        Napi::TypeError::New(env, "First argument must be a Buffer").ThrowAsJavaScriptException();
+        return env.Undefined();
     }
 
-    Local<Object> inBuf = Nan::To<Object>(info[0]).ToLocalChecked();
-    char* dataIn = node::Buffer::Data(inBuf);
-    size_t lenIn = node::Buffer::Length(inBuf);
+    Napi::Buffer<char> input = info[0].As<Napi::Buffer<char>>();
 
     size_t expectedOutLen = 999 * 1024 * 1024;
-    if (info.Length() > 1 && info[1]->IsNumber()) {
-        expectedOutLen = Nan::To<uint32_t>(info[1]).FromJust();
+    if (info.Length() > 1 && info[1].IsNumber()) {
+        expectedOutLen = info[1].As<Napi::Number>().Uint32Value();
     }
 
-    auto maybeBuf = Nan::NewBuffer(expectedOutLen);
-    if (maybeBuf.IsEmpty()) {
-        return Nan::ThrowError("Failed to allocate output buffer");
-    }
+    Napi::Buffer<char> output = Napi::Buffer<char>::New(env, expectedOutLen);
 
-    Local<Object> outBuf = maybeBuf.ToLocalChecked();
-    char* outData = node::Buffer::Data(outBuf);
+    unsigned int decompressedLen = lzf_decompress(
+        input.Data(), (unsigned int)input.Length(),
+        output.Data(), (unsigned int)expectedOutLen);
 
-    unsigned int decompressedLen = lzf_decompress(dataIn, lenIn, outData, expectedOutLen);
     if (decompressedLen == 0) {
-        return Nan::ThrowError("Decompression failed");
+        Napi::Error::New(env, "Decompression failed").ThrowAsJavaScriptException();
+        return env.Undefined();
     }
 
-    Local<Function> sliceFn = outBuf->Get(Nan::GetCurrentContext(), Nan::New("slice").ToLocalChecked())
-        .ToLocalChecked().As<Function>();
-    Local<Value> args[] = {
-        Nan::New(0),
-        Nan::New((uint32_t)decompressedLen)
-    };
-    Local<Value> sliced = sliceFn->Call(Nan::GetCurrentContext(), outBuf, 2, args).ToLocalChecked();
+    if ((size_t)decompressedLen == expectedOutLen) {
+        return output;
+    }
 
-    info.GetReturnValue().Set(sliced);
+    return Napi::Buffer<char>::Copy(env, output.Data(), decompressedLen);
 }
 
-NAN_MODULE_INIT(init) {
-    Nan::SetMethod(target, "compress", compress);
-    Nan::SetMethod(target, "decompress", decompress);
+Napi::Object Init(Napi::Env env, Napi::Object exports) {
+    exports.Set("compress", Napi::Function::New(env, Compress));
+    exports.Set("decompress", Napi::Function::New(env, Decompress));
+    return exports;
 }
 
-NODE_MODULE(lzf, init)
+}  // namespace
+
+NODE_API_MODULE(lzf, Init)
