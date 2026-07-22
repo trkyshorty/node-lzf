@@ -1,25 +1,48 @@
 {
-    "name": "lzf",
-    "version": "0.4.0",
-    "description": "lzf compression module for nodejs",
-    "keywords": ["lzf", "compression", "buffer"],
-    "author": "Ian Babrou <ibobrik@gmail.com>",
-    "engines": [
-        "node"
-    ],
-    "repository": {
-        "type": "git",
-        "url": "git://github.com/Topface/node-lzf.git"
-    },
-    "dependencies": {
-        "nan": "^2.18.0"
-    },
-    "directories": {
-        "lib": "./lib"
-    },
-    "main": "./index",
-    "scripts": {
-        "test": "node test/test.js"
-    },
-    "license": "BSD-2-Clause"
+  "name": "@trkyshorty/node-lzf",
+  "version": "1.1.0",
+  "description": "lzf compression module for nodejs (Topface/node-lzf fork)",
+  "keywords": [
+    "lzf",
+    "compression",
+    "buffer",
+    "prebuilds",
+    "napi"
+  ],
+  "author": "Türkay TANRIKULU <trky.shorty@gmail.com>",
+  "contributors": [
+    "Ian Babrou <ibobrik@gmail.com>"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/trkyshorty/node-lzf.git"
+  },
+  "dependencies": {
+    "node-addon-api": "^8.3.0",
+    "node-gyp-build": "^4.8.4"
+  },
+  "devDependencies": {
+    "prebuildify": "^6.0.1"
+  },
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "gypfile": true,
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "binding.gyp",
+    "src/",
+    "prebuilds/",
+    "README.md"
+  ],
+  "scripts": {
+    "install": "node-gyp-build",
+    "prebuild": "prebuildify --napi --strip",
+    "test": "node --test test/test.js",
+    "bench": "node benchmark/benchmark.js"
+  },
+  "license": "BSD-2-Clause"
 }

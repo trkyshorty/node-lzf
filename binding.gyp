@@ -8,14 +8,16 @@
         "src/lzf/lzf_d.cc"
       ],
       "include_dirs": [
-        "<!(node -e \"require('nan')\")",
+        "<!(node -p \"require('node-addon-api').include_dir\")",
         "src/lzf"
       ],
+      "defines": [ "NAPI_DISABLE_CPP_EXCEPTIONS" ],
       "conditions": [
         [
           'OS=="linux" or OS=="freebsd" or OS=="openbsd" or OS=="solaris"',
           {
             "cflags": [ "-O3" ],
+            "cflags_cc": [ "-O3" ],
             "conditions": [
               ["target_arch=='x64'", { "cflags": [ "-fPIC" ] }]
             ]
