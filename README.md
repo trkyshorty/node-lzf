@@ -4,13 +4,13 @@
 
 LZF advantages:
 
-* Small code size (less then 500 lines including header files and docs).
-* Very fast compression speeds, rivaling a straight copy loop, especially for decompression which is basically at (unoptimized) memcpy-speed. Compression speed can be increased by 20% by sacrificing a few percent of compression ratio.
-* Mediocre compression ratios - you can usually expect about 40-50% compression for typical binary data
-* Easy to use (just two functions, no state attached)
-* Highly portable (written in C)
-* Tunable, see the file lzfP.h in the distribution, to tailor liblzf to your needs. The generated compressed blocks can be decompressed by any liblzf version regardless of the options used to compress.
-* Freely usable (BSD-type-license)
+- Small code size (less then 500 lines including header files and docs).
+- Very fast compression speeds, rivaling a straight copy loop, especially for decompression which is basically at (unoptimized) memcpy-speed. Compression speed can be increased by 20% by sacrificing a few percent of compression ratio.
+- Mediocre compression ratios - you can usually expect about 40-50% compression for typical binary data
+- Easy to use (just two functions, no state attached)
+- Highly portable (written in C)
+- Tunable, see the file lzfP.h in the distribution, to tailor liblzf to your needs. The generated compressed blocks can be decompressed by any liblzf version regardless of the options used to compress.
+- Freely usable (BSD-type-license)
 
 ### Install
 
@@ -65,7 +65,7 @@ a descriptive message when the input is corrupted (`corrupted input`) or
 decompressor is safe on untrusted input: corrupt streams throw instead of
 reading or writing out of bounds.
 
-> **v2 note:** older versions allowed omitting `expectedLength` and
+> **v1.1.0 note:** older versions allowed omitting `expectedLength` and
 > silently allocated a 999 MB scratch buffer per call — that default has
 > been removed.
 
@@ -116,8 +116,8 @@ than size (hot network paths); pick zlib/brotli for cold storage.
 
 ### Authors
 
-* Ian Babrou (`ibobrik@gmail.com`) — original author
-* Türkay Tanrikulu (`trky.shorty@gmail.com`) — fork maintainer
+- Ian Babrou (`ibobrik@gmail.com`) — original author
+- Türkay Tanrikulu (`trky.shorty@gmail.com`) — fork maintainer
 
 ### License
 
