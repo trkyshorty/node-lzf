@@ -1,6 +1,6 @@
 {
   "name": "@trkyshorty/node-lzf",
-  "version": "0.5.0",
+  "version": "1.1.0",
   "description": "lzf compression module for nodejs (Topface/node-lzf fork)",
   "keywords": [
     "lzf",
@@ -28,9 +28,11 @@
     "prebuildify": "^6.0.1"
   },
   "main": "./index.js",
+  "types": "./index.d.ts",
   "gypfile": true,
   "files": [
     "index.js",
+    "index.d.ts",
     "binding.gyp",
     "src/",
     "prebuilds/",
@@ -39,7 +41,8 @@
   "scripts": {
     "install": "node-gyp-build",
     "prebuild": "prebuildify --napi --strip",
-    "test": "node test/test.js"
+    "test": "node --test test/test.js",
+    "bench": "node benchmark/benchmark.js"
   },
   "license": "BSD-2-Clause"
 }
