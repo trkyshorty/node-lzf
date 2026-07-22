@@ -18,6 +18,8 @@ jobs:
             name: linux-arm64
           - os: windows-latest
             name: win32-x64
+          - os: macos-14
+            name: darwin-arm64
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
