@@ -43,6 +43,7 @@
     "prepublishOnly": "node -e \"if (!process.env.GITHUB_ACTIONS) { console.error('Refusing to publish locally: the prebuild workflow publishes releases. Bump the version and push to master.'); process.exit(1); }\"",
     "prebuild": "prebuildify --napi --strip",
     "test": "node --test test/test.js",
+    "test:local": "node-gyp rebuild && node --test test/test.js",
     "bench": "node benchmark/benchmark.js"
   },
   "license": "BSD-2-Clause"
