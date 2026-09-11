@@ -1,6 +1,6 @@
 {
   "name": "@trkyshorty/node-lzf",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "lzf compression module for nodejs (Topface/node-lzf fork)",
   "keywords": [
     "lzf",
