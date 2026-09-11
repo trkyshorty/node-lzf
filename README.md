@@ -141,6 +141,16 @@ In short: LZF compresses 2–10× faster than zlib at its fastest level, at
 the cost of a worse ratio. Pick LZF when compression latency matters more
 than size (hot network paths); pick zlib/brotli for cold storage.
 
+### Development
+
+`npm test` runs the suite against whichever binary `node-gyp-build` resolves:
+`build/Release` when it exists, otherwise the local `prebuilds/` — which are
+git-ignored and may predate your latest `src/` change. After changing the C++
+sources (`src/`, `binding.gyp`) run `npm run test:local` instead: it rebuilds
+`build/Release` with the `node-gyp` bundled with npm (a C++ toolchain is
+required) and runs the tests against that fresh build. Delete `build/` to test
+the prebuilds again.
+
 ---
 
 ### Authors
