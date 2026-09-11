@@ -6,7 +6,7 @@ on:
     tags:
       - 'v*'
 
-# En az yetki: iş yalnızca depoyu okur ve artifact yükler; jetonun yazma yetkisi gerekmez.
+# Least privilege: the jobs only read the repository and upload artifacts; the token needs no write access.
 permissions:
   contents: read
 
@@ -43,8 +43,8 @@ jobs:
     needs: prebuild
     runs-on: ubuntu-latest
     steps:
-      # v8: özet (digest) uyuşmazlığında varsayılan olarak hata verir; pattern + merge-multiple
-      # davranışı v4 ile aynıdır.
+      # v8: fails by default on a digest mismatch; pattern + merge-multiple
+      # behave the same as in v4.
       - uses: actions/download-artifact@v8
         with:
           path: prebuilds

@@ -79,9 +79,9 @@
  * Unconditionally aligning does not cost very much, so do it if unsure
  */
 /*
- * node-lzf: upstream `# define STRICT_ALIGN !(defined(__i386) || defined (__amd64))`
- * idi; `defined` işlecinin makro açılımından doğması standartta tanımsız davranıştır
- * (gcc/clang -Wexpansion-to-defined). Aynı değeri doğrudan #if ile seçiyoruz.
+ * node-lzf: upstream used `# define STRICT_ALIGN !(defined(__i386) || defined (__amd64))`;
+ * a `defined` operator produced by macro expansion is undefined behavior in the standard
+ * (gcc/clang -Wexpansion-to-defined). We select the same value directly with #if.
  */
 #ifndef STRICT_ALIGN
 # if defined(__i386) || defined (__amd64)
@@ -151,7 +151,7 @@ using namespace std;
 
 #ifndef LZF_USE_OFFSETS
 # if defined (WIN32)
-   /* node-lzf: upstream `defined(_M_X64)` açılımı; STRICT_ALIGN ile aynı gerekçe. */
+   /* node-lzf: replaces upstream's macro-expanded `defined(_M_X64)`; same rationale as STRICT_ALIGN. */
 #  if defined(_M_X64)
 #   define LZF_USE_OFFSETS 1
 #  else

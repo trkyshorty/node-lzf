@@ -4,7 +4,7 @@ updates:
     directory: /
     schedule:
       interval: monthly
-    # Tüm action güncellemeleri tek PR'da toplanır.
+    # All action updates are grouped into a single PR.
     groups:
       github-actions:
         patterns: ['*']
@@ -13,7 +13,7 @@ updates:
     schedule:
       interval: monthly
     open-pull-requests-limit: 5
-    # Minor ve patch güncellemeleri tek PR'da toplanır; major sürümler ayrı PR açar.
+    # Minor and patch updates are grouped into a single PR; major versions get their own PRs.
     groups:
       minor-and-patch:
         patterns: ['*']

@@ -12,11 +12,11 @@
         "src/lzf"
       ],
       "defines": [ "NAPI_DISABLE_CPP_EXCEPTIONS" ],
-      # -Wno-implicit-fallthrough: upstream liblzf (src/lzf/lzf_d.cc) kopyalama döngülerini
-      # bilinçli olarak "case" düşüşüyle (Duff's device) açar; gcc'nin -Wextra ile açılan
-      # uyarısı burada hata değildir. Satıcı kodu ile kendi kodumuz (src/lzf.cc) tek hedefte
-      # derlendiğinden bastırma hedef genelidir; algoritmayı yeniden yazmıyoruz. MSVC
-      # bu uyarıyı vermediği için Windows'a bayrak eklenmez.
+      # -Wno-implicit-fallthrough: upstream liblzf (src/lzf/lzf_d.cc) deliberately unrolls its
+      # copy loops with "case" fallthrough (Duff's device); the warning gcc enables with -Wextra
+      # is not a bug here. The vendored code and our own code (src/lzf.cc) build as a single
+      # target, so the suppression is target-wide; we do not rewrite the algorithm. MSVC does
+      # not emit this warning, so no flag is added on Windows.
       "conditions": [
         [
           'OS=="linux" or OS=="freebsd" or OS=="openbsd" or OS=="solaris"',
