@@ -44,6 +44,30 @@ const compressed2 = await lzf.compressAsync(data);
 const restored2 = await lzf.decompressAsync(compressed2, data.length);
 ```
 
+#### TypeScript
+
+Type definitions are bundled, no `@types` package is needed. The module is
+CommonJS (`export =`), so import it as a namespace — or as a default import
+when `esModuleInterop` is enabled:
+
+```typescript
+import * as lzf from '@trkyshorty/node-lzf';
+// with "esModuleInterop": true you can also write:
+// import lzf from '@trkyshorty/node-lzf';
+
+const data: Buffer = Buffer.from('some data to compress');
+
+// sync
+const compressed: Buffer = lzf.compress(data);
+const restored: Buffer = lzf.decompress(compressed, data.length);
+
+// async
+async function roundtrip(input: Buffer): Promise<Buffer> {
+    const packed = await lzf.compressAsync(input);
+    return lzf.decompressAsync(packed, input.length);
+}
+```
+
 ### API
 
 TypeScript definitions are bundled (`index.d.ts`).
