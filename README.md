@@ -30,7 +30,8 @@ and push to `master`. If that version is not on npm yet, the workflow builds
 and tests every platform, publishes the package with the merged `prebuilds/`
 via npm trusted publishing (with provenance) and tags the commit
 `v<version>`. Pushes that keep the version publish nothing; a manual run
-always builds and tests.
+always builds and tests. A local `npm publish` is refused (`prepublishOnly`),
+so stale local `prebuilds/` can never reach the registry.
 
 ### Usage
 
