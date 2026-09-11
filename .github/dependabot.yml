@@ -3,8 +3,18 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
+    # Tüm action güncellemeleri tek PR'da toplanır.
+    groups:
+      github-actions:
+        patterns: ['*']
   - package-ecosystem: npm
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
+    open-pull-requests-limit: 5
+    # Minor ve patch güncellemeleri tek PR'da toplanır; major sürümler ayrı PR açar.
+    groups:
+      minor-and-patch:
+        patterns: ['*']
+        update-types: [minor, patch]

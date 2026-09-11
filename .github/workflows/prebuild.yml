@@ -6,6 +6,10 @@ on:
     tags:
       - 'v*'
 
+# En az yetki: iş yalnızca depoyu okur ve artifact yükler; jetonun yazma yetkisi gerekmez.
+permissions:
+  contents: read
+
 jobs:
   prebuild:
     strategy:
