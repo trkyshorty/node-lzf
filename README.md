@@ -25,8 +25,12 @@ from source via `node-gyp-build` (requires a C++ toolchain).
 
 Prebuilds are produced by the `prebuild` GitHub Actions workflow
 (`npm run prebuild` runs `prebuildify --napi --strip` for the current
-platform). Before `npm publish`, download the merged `prebuilds` artifact
-from the workflow run and place it in the package root as `prebuilds/`.
+platform). Releases are fully automatic: bump `version` in `package.json`
+and push to `master`. If that version is not on npm yet, the workflow builds
+and tests every platform, publishes the package with the merged `prebuilds/`
+via npm trusted publishing (with provenance) and tags the commit
+`v<version>`. Pushes that keep the version publish nothing; a manual run
+always builds and tests.
 
 ### Usage
 

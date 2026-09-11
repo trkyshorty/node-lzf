@@ -1,17 +1,49 @@
 name: prebuild
 
+# Release flow: bump "version" in package.json and push to master. If that version is not on
+# npm yet, every platform is built and tested, the package is published with the merged
+# prebuilds and the commit is tagged v<version>. Other pushes to master only run the version
+# check. A manual run always builds and tests, and releases too if the version is new.
 on:
   workflow_dispatch:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - master
 
-# Least privilege: the jobs only read the repository and upload artifacts; the token needs no write access.
+# Least privilege: the jobs only read the repository and move artifacts. Only the publish job
+# gets write access (to push the release tag) and an OIDC token (id-token: write) for npm.
 permissions:
   contents: read
 
+# One release at a time: a second push waits instead of racing the first one to npm.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+      release: ${{ steps.check.outputs.release }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - id: check
+        run: |
+          name=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          published=$(npm view "$name@$version" version 2>/dev/null || true)
+          if [ -z "$published" ]; then release=true; else release=false; fi
+          echo "$name@$version on npm: ${published:-no} -> release=$release"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "release=$release" >> "$GITHUB_OUTPUT"
+
   prebuild:
+    needs: version
+    if: needs.version.outputs.release == 'true' || github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: false
       matrix:
@@ -55,3 +87,42 @@ jobs:
           name: prebuilds
           path: prebuilds/
           if-no-files-found: error
+
+  publish:
+    needs: [version, merge]
+    if: needs.version.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    # npm trusted publishing (OIDC): no npm token is stored anywhere. The package settings on
+    # npmjs.com must list trkyshorty/node-lzf + prebuild.yml as a trusted publisher.
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - uses: actions/download-artifact@v8
+        with:
+          name: prebuilds
+          path: prebuilds
+      - name: Check that every platform has a prebuild
+        run: |
+          for p in linux-x64 linux-arm64 win32-x64 darwin-arm64; do
+            if [ ! -f "prebuilds/$p/@trkyshorty+node-lzf.node" ]; then
+              echo "::error::missing prebuild for $p"
+              exit 1
+            fi
+          done
+      - run: npm publish --provenance --access public
+      - name: Tag the release
+        env:
+          TAG: v${{ needs.version.outputs.version }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" > /dev/null; then
+            echo "::notice::tag $TAG already exists, leaving it as is"
+          else
+            git tag "$TAG" "$GITHUB_SHA"
+            git push origin "refs/tags/$TAG"
+          fi
