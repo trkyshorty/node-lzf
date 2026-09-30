@@ -75,15 +75,16 @@ async function roundtrip(input: Buffer): Promise<Buffer> {
 
 ### API
 
-TypeScript definitions are bundled (`index.d.ts`).
+TypeScript definitions are bundled (`index.d.ts`). Every function accepts a
+`Buffer` or a plain `Uint8Array` as input and always returns a `Buffer`.
 
-#### `compress(data: Buffer): Buffer`
+#### `compress(data: Uint8Array): Buffer`
 
 Returns an LZF-compressed Buffer sized exactly to the result. Throws
-`TypeError` if `data` is not a Buffer, is empty, or exceeds 1 GiB.
+`TypeError` if `data` is not a Buffer/Uint8Array, is empty, or exceeds 1 GiB.
 Note: incompressible input can grow slightly (up to ~104%).
 
-#### `decompress(data: Buffer, expectedLength: number): Buffer`
+#### `decompress(data: Uint8Array, expectedLength: number): Buffer`
 
 Returns the decompressed Buffer. `expectedLength` is **required** — pass the
 exact decompressed size (or an upper bound); the result is shrunk to the
@@ -98,7 +99,7 @@ reading or writing out of bounds.
 > silently allocated a 999 MB scratch buffer per call — that default has
 > been removed.
 
-#### `compressAsync(data: Buffer): Promise<Buffer>` / `decompressAsync(data: Buffer, expectedLength: number): Promise<Buffer>`
+#### `compressAsync(data: Uint8Array): Promise<Buffer>` / `decompressAsync(data: Uint8Array, expectedLength: number): Promise<Buffer>`
 
 Same semantics as the sync variants, but the (de)compression runs on the
 libuv thread pool and the returned promise rejects with the errors the sync
