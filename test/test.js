@@ -151,8 +151,14 @@ test('async: compressAsync/decompressAsync roundtrip', async () => {
 });
 
 test('async: rejects with the same errors as sync', async () => {
+    await assert.rejects(lzf.compressAsync(), TypeError);
     await assert.rejects(lzf.compressAsync('nope'), TypeError);
     await assert.rejects(lzf.compressAsync(Buffer.alloc(0)), TypeError);
+    await assert.rejects(lzf.decompressAsync(), TypeError);
+    await assert.rejects(lzf.decompressAsync('not a buffer', 10), TypeError);
+    await assert.rejects(lzf.decompressAsync(Buffer.alloc(0), 10), TypeError);
+    await assert.rejects(lzf.decompressAsync(Buffer.from([1, 0])), TypeError); // missing
+    await assert.rejects(lzf.decompressAsync(Buffer.from([1, 0]), 'x'), TypeError); // wrong type
     await assert.rejects(lzf.decompressAsync(Buffer.from([1, 0]), 0), RangeError);
     await assert.rejects(lzf.decompressAsync(Buffer.from([0xe0, 0x00, 0x00]), 64), /corrupted/);
     const data = Buffer.from(lorem);
@@ -183,6 +189,33 @@ test('async: input buffer mutated after await does not corrupt result', async ()
     data.fill(0);
     const out = await lzf.decompressAsync(compressed, snapshot.length);
     assert.ok(out.equals(snapshot));
+});
+
+test('input: a plain Uint8Array is accepted like a Buffer', async () => {
+    const data = compressibleBytes(4096, 42);
+    const u8 = new Uint8Array(data);
+    const compressed = lzf.compress(u8);
+    assert.ok(Buffer.isBuffer(compressed));
+    assert.ok(lzf.decompress(new Uint8Array(compressed), data.length).equals(data));
+    const asyncCompressed = await lzf.compressAsync(u8);
+    assert.ok((await lzf.decompressAsync(new Uint8Array(asyncCompressed), data.length)).equals(data));
+    // a view with a non-zero byteOffset must be read from its own offset
+    const padded = new Uint8Array(data.length + 7);
+    padded.set(data, 7);
+    assert.ok(lzf.decompress(lzf.compress(padded.subarray(7)), data.length).equals(data));
+});
+
+test('input: DataView and ArrayBuffer are rejected with TypeError', async () => {
+    // A DataView used to pass the Buffer check and then abort the whole
+    // process instead of throwing.
+    const view = new DataView(new ArrayBuffer(16));
+    const raw = new ArrayBuffer(16);
+    for (const input of [view, raw]) {
+        assert.throws(() => lzf.compress(input), TypeError);
+        assert.throws(() => lzf.decompress(input, 64), TypeError);
+        await assert.rejects(lzf.compressAsync(input), TypeError);
+        await assert.rejects(lzf.decompressAsync(input, 64), TypeError);
+    }
 });
 
 test('wire format: decodes a hand-crafted liblzf stream', () => {

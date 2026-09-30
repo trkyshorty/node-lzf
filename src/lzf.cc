@@ -98,7 +98,11 @@ Napi::Value WrapResult(Napi::Env env, RawResult* result) {
 /* ---- argument validation ------------------------------------------------ */
 
 bool ValidateInputBuffer(const Napi::CallbackInfo& info, std::string* error) {
-    if (info.Length() < 1 || !info[0].IsBuffer()) {
+    /* napi_is_buffer accepts any ArrayBufferView, but Buffer<char> reads its
+     * length via napi_get_typedarray_info, which fails on a DataView and
+     * leaves an exception pending; throwing on top of it aborts the process.
+     * Requiring a TypedArray too rejects DataView with a TypeError instead. */
+    if (info.Length() < 1 || !info[0].IsBuffer() || !info[0].IsTypedArray()) {
         *error = "First argument must be a Buffer";
         return false;
     }

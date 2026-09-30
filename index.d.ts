@@ -2,32 +2,33 @@
 
 declare namespace lzf {
     /**
-     * Compresses a Buffer with LZF. Throws TypeError on invalid input
-     * (non-Buffer, empty, or larger than 1 GiB). Runs synchronously on
-     * the calling thread.
+     * Compresses a Buffer or Uint8Array with LZF and returns a new Buffer.
+     * Throws TypeError on invalid input (not a Buffer/Uint8Array, empty, or
+     * larger than 1 GiB). Runs synchronously on the calling thread.
      */
-    function compress(data: Buffer): Buffer;
+    function compress(data: Uint8Array): Buffer;
 
     /**
-     * Compresses a Buffer with LZF on the libuv thread pool without
-     * blocking the event loop. Rejects with the same errors compress()
-     * throws.
+     * Compresses a Buffer or Uint8Array with LZF on the libuv thread pool
+     * without blocking the event loop. Rejects with the same errors
+     * compress() throws.
      */
-    function compressAsync(data: Buffer): Promise<Buffer>;
+    function compressAsync(data: Uint8Array): Promise<Buffer>;
 
     /**
-     * Decompresses an LZF-compressed Buffer. expectedLength is the exact
-     * (or an upper bound of the) decompressed size, between 1 and 1 GiB.
-     * Throws TypeError/RangeError on invalid arguments and Error when the
-     * input is corrupted or expectedLength is too small.
+     * Decompresses LZF-compressed data (a Buffer or Uint8Array) into a new
+     * Buffer. expectedLength is the exact (or an upper bound of the)
+     * decompressed size, between 1 and 1 GiB. Throws TypeError/RangeError on
+     * invalid arguments and Error when the input is corrupted or
+     * expectedLength is too small.
      */
-    function decompress(data: Buffer, expectedLength: number): Buffer;
+    function decompress(data: Uint8Array, expectedLength: number): Buffer;
 
     /**
      * Decompresses on the libuv thread pool without blocking the event
      * loop. Rejects with the same errors decompress() throws.
      */
-    function decompressAsync(data: Buffer, expectedLength: number): Promise<Buffer>;
+    function decompressAsync(data: Uint8Array, expectedLength: number): Promise<Buffer>;
 }
 
 export = lzf;
