@@ -179,9 +179,10 @@ than size (hot network paths); pick zlib/brotli for cold storage.
 `build/Release` when it exists, otherwise the local `prebuilds/` — which are
 git-ignored and may predate your latest `src/` change. After changing the C++
 sources (`src/`, `binding.gyp`) run `npm run test:local` instead: it rebuilds
-`build/Release` with the `node-gyp` bundled with npm (a C++ toolchain is
-required) and runs the tests against that fresh build. Delete `build/` to test
-the prebuilds again.
+`build/Release` (a C++ toolchain is required) and runs the tests against that
+fresh build. Delete `build/` to test the prebuilds again. Builds use the
+`node-gyp` devDependency rather than the copy bundled with npm, which is too
+old to find Visual Studio 2026 on Node 20.
 
 The `test` GitHub Actions workflow runs on every push and pull request: it
 builds from source and runs the suite on Linux, Windows and macOS with
