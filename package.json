@@ -1,6 +1,6 @@
 {
   "name": "@trkyshorty/node-lzf",
-  "version": "1.3.1",
+  "version": "1.4.0",
   "description": "lzf compression module for nodejs (Topface/node-lzf fork)",
   "keywords": [
     "lzf",
@@ -14,7 +14,7 @@
     "Ian Babrou <ibobrik@gmail.com>"
   ],
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "repository": {
     "type": "git",
@@ -36,12 +36,14 @@
     "binding.gyp",
     "src/",
     "prebuilds/",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "install": "node-gyp-build",
     "prepublishOnly": "node -e \"if (!process.env.GITHUB_ACTIONS) { console.error('Refusing to publish locally: the prebuild workflow publishes releases. Bump the version and push to master.'); process.exit(1); }\"",
-    "prebuild": "prebuildify --napi --strip",
+    "build:prebuilds": "prebuildify --napi --strip",
+    "build:source": "node-gyp rebuild",
     "test": "node --test test/test.js",
     "test:local": "node-gyp rebuild && node --test test/test.js",
     "bench": "node benchmark/benchmark.js"

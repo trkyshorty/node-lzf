@@ -82,6 +82,9 @@
  * node-lzf: upstream used `# define STRICT_ALIGN !(defined(__i386) || defined (__amd64))`;
  * a `defined` operator produced by macro expansion is undefined behavior in the standard
  * (gcc/clang -Wexpansion-to-defined). We select the same value directly with #if.
+ * MSVC x64 is deliberately left on the aligned path: enabling the unaligned one there
+ * was measured (npm run bench) at a few percent faster on most data but ~70% slower
+ * on highly repetitive input.
  */
 #ifndef STRICT_ALIGN
 # if defined(__i386) || defined (__amd64)
@@ -151,8 +154,9 @@ using namespace std;
 
 #ifndef LZF_USE_OFFSETS
 # if defined (WIN32)
-   /* node-lzf: replaces upstream's macro-expanded `defined(_M_X64)`; same rationale as STRICT_ALIGN. */
-#  if defined(_M_X64)
+   /* node-lzf: replaces upstream's macro-expanded `defined(_M_X64)`; same rationale as STRICT_ALIGN.
+    * _WIN64 covers both x64 and ARM64 Windows. */
+#  if defined(_WIN64)
 #   define LZF_USE_OFFSETS 1
 #  else
 #   define LZF_USE_OFFSETS 0
@@ -189,6 +193,18 @@ typedef LZF_HSLOT LZF_STATE[1 << (HLOG)];
 #  undef STRICT_ALIGN
 #  define STRICT_ALIGN 1
 # endif
+#endif
+
+#if !STRICT_ALIGN
+/* node-lzf: upstream dereferenced `*(u16 *)p`, an unaligned load that is undefined
+ * behavior (UBSan -fsanitize=alignment). memcpy is well-defined and compiles to the
+ * same single load on the targets that enable this path. */
+static inline u16 lzf_load16 (const u8 *p)
+{
+  u16 v;
+  memcpy (&v, p, sizeof (v));
+  return v;
+}
 #endif
 
 #if ULTRA_FAST

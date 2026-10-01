@@ -118,8 +118,12 @@ lzf_compress (const void *const in_data, unsigned int in_len,
    * no bit pattern traps. Since the only platform that is both non-POSIX
    * and fails to support both assumptions is windows 64 bit, we make a
    * special workaround for it.
+   * node-lzf: upstream only checked _M_X64, leaving a 32-bit `unsigned long` on
+   * Windows ARM64. With the uninitialized hash table a garbage `ref` could then
+   * truncate to a small offset and be dereferenced out of bounds. _WIN64 covers
+   * every 64-bit Windows target.
    */
-#if defined (WIN32) && defined (_M_X64)
+#if defined (_WIN64)
   unsigned _int64 off; /* workaround for missing POSIX compliance */
 #else
   unsigned long off;
@@ -155,7 +159,7 @@ lzf_compress (const void *const in_data, unsigned int in_len,
 #if STRICT_ALIGN
           && ((ref[1] << 8) | ref[0]) == ((ip[1] << 8) | ip[0])
 #else
-          && *(u16 *)ref == *(u16 *)ip
+          && lzf_load16 (ref) == lzf_load16 (ip)
 #endif
         )
         {
