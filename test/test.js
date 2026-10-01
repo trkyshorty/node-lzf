@@ -48,6 +48,19 @@ test('roundtrip: single byte', () => {
     assert.ok(lzf.decompress(lzf.compress(data), 1).equals(data));
 });
 
+test('roundtrip: 1-3 byte inputs in exactly sized allocations', async () => {
+    // Small Buffers live in Node's shared pool, so reading past them stays in
+    // mapped memory. The async API copies the input into an allocation of the
+    // exact size, which lets AddressSanitizer see an over-read: liblzf used to
+    // read one byte past a 1-byte input.
+    for (const size of [1, 2, 3]) {
+        const data = Buffer.from('xyz'.slice(0, size));
+        const compressed = await lzf.compressAsync(data);
+        assert.ok(lzf.decompress(compressed, size).equals(data), `size=${size}`);
+        assert.ok((await lzf.decompressAsync(compressed, size)).equals(data), `size=${size}`);
+    }
+});
+
 test('roundtrip: incompressible random data (multiple sizes)', () => {
     for (const size of [1, 2, 33, 1024, 65536, 1024 * 1024]) {
         const data = crypto.randomBytes(size);

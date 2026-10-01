@@ -140,8 +140,12 @@ lzf_compress (const void *const in_data, unsigned int in_len,
 
   lit = 0; op++; /* start run */
 
-  hval = FRST (ip);
-  while (ip < in_end - 2)
+  /* node-lzf: upstream read FRST (ip) unconditionally, i.e. ip[1] one byte past
+   * a 1-byte input (AddressSanitizer heap-buffer-overflow), and formed in_end - 2
+   * before the start of the buffer. Inputs shorter than 3 bytes never enter the
+   * match loop and are emitted as literals below. */
+  hval = in_len > 1 ? FRST (ip) : 0;
+  while (in_len > 2 && ip < in_end - 2)
     {
       LZF_HSLOT *hslot;
 
