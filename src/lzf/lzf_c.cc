@@ -118,8 +118,12 @@ lzf_compress (const void *const in_data, unsigned int in_len,
    * no bit pattern traps. Since the only platform that is both non-POSIX
    * and fails to support both assumptions is windows 64 bit, we make a
    * special workaround for it.
+   * node-lzf: upstream only checked _M_X64, leaving a 32-bit `unsigned long` on
+   * Windows ARM64. With the uninitialized hash table a garbage `ref` could then
+   * truncate to a small offset and be dereferenced out of bounds. _WIN64 covers
+   * every 64-bit Windows target.
    */
-#if defined (WIN32) && defined (_M_X64)
+#if defined (_WIN64)
   unsigned _int64 off; /* workaround for missing POSIX compliance */
 #else
   unsigned long off;
@@ -136,8 +140,12 @@ lzf_compress (const void *const in_data, unsigned int in_len,
 
   lit = 0; op++; /* start run */
 
-  hval = FRST (ip);
-  while (ip < in_end - 2)
+  /* node-lzf: upstream read FRST (ip) unconditionally, i.e. ip[1] one byte past
+   * a 1-byte input (AddressSanitizer heap-buffer-overflow), and formed in_end - 2
+   * before the start of the buffer. Inputs shorter than 3 bytes never enter the
+   * match loop and are emitted as literals below. */
+  hval = in_len > 1 ? FRST (ip) : 0;
+  while (in_len > 2 && ip < in_end - 2)
     {
       LZF_HSLOT *hslot;
 
@@ -155,7 +163,8 @@ lzf_compress (const void *const in_data, unsigned int in_len,
 #if STRICT_ALIGN
           && ((ref[1] << 8) | ref[0]) == ((ip[1] << 8) | ip[0])
 #else
-          && *(u16 *)ref == *(u16 *)ip
+          /* node-lzf: upstream compared `*(u16 *)ref == *(u16 *)ip`; see lzf_load16 in lzfP.h. */
+          && lzf_load16 (ref) == lzf_load16 (ip)
 #endif
         )
         {

@@ -47,23 +47,31 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Linux prebuilds are tagged with their libc (glibc/musl) so node-gyp-build never loads
+        # a glibc binary on Alpine; untagged, it matched and then failed to load.
         include:
           - os: ubuntu-latest
             name: linux-x64
+            flags: --tag-libc
           - os: ubuntu-24.04-arm
             name: linux-arm64
+            flags: --tag-libc
           - os: windows-latest
             name: win32-x64
+          - os: windows-11-arm
+            name: win32-arm64
           - os: macos-14
             name: darwin-arm64
+          - os: macos-15-intel
+            name: darwin-x64
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 24
-      - run: npm install --ignore-scripts
-      - run: npm run prebuild
+      - run: npm ci --ignore-scripts
+      - run: npm run build:prebuilds -- ${{ matrix.flags }}
       - run: npm test
       - uses: actions/upload-artifact@v7
         with:
@@ -71,8 +79,27 @@ jobs:
           path: prebuilds/
           if-no-files-found: error
 
+  # Alpine (musl) x64 is built inside an Alpine container. Alpine on arm64 is left to the source
+  # build: the runner does not provide the node runtime JavaScript actions need there.
+  prebuild-musl:
+    needs: version
+    if: needs.version.outputs.release == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    container: node:24-alpine
+    steps:
+      - run: apk add --no-cache python3 make g++
+      - uses: actions/checkout@v7
+      - run: npm ci --ignore-scripts
+      - run: npm run build:prebuilds -- --tag-libc
+      - run: npm test
+      - uses: actions/upload-artifact@v7
+        with:
+          name: prebuilds-linux-x64-musl
+          path: prebuilds/
+          if-no-files-found: error
+
   merge:
-    needs: prebuild
+    needs: [prebuild, prebuild-musl]
     runs-on: ubuntu-latest
     steps:
       # v8: fails by default on a digest mismatch; pattern + merge-multiple
@@ -109,9 +136,16 @@ jobs:
           path: prebuilds
       - name: Check that every platform has a prebuild
         run: |
-          for p in linux-x64 linux-arm64 win32-x64 darwin-arm64; do
-            if [ ! -f "prebuilds/$p/@trkyshorty+node-lzf.node" ]; then
-              echo "::error::missing prebuild for $p"
+          for f in \
+            linux-x64/@trkyshorty+node-lzf.glibc.node \
+            linux-x64/@trkyshorty+node-lzf.musl.node \
+            linux-arm64/@trkyshorty+node-lzf.glibc.node \
+            win32-x64/@trkyshorty+node-lzf.node \
+            win32-arm64/@trkyshorty+node-lzf.node \
+            darwin-arm64/@trkyshorty+node-lzf.node \
+            darwin-x64/@trkyshorty+node-lzf.node; do
+            if [ ! -f "prebuilds/$f" ]; then
+              echo "::error::missing prebuild $f"
               exit 1
             fi
           done

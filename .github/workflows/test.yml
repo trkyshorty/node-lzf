@@ -1,0 +1,59 @@
+name: test
+
+# Continuous testing for every push and pull request: the addon is compiled from source with
+# node-gyp and the suite runs on each supported Node.js major and OS, plus once on Linux under
+# AddressSanitizer and UndefinedBehaviorSanitizer. Releases are handled by prebuild.yml.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    # A pull request from a branch of this repository is already tested by its push event.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node: [20, 22, 24]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm ci --ignore-scripts
+      - run: npm run test:local
+
+  sanitizers:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: npm ci --ignore-scripts
+      # vptr needs RTTI, which node-gyp disables. -fno-sanitize-recover makes any UBSan finding
+      # abort the run instead of only printing a warning.
+      - name: Build with ASan and UBSan
+        run: npm run build:source
+        env:
+          CFLAGS: -fsanitize=address,undefined -fno-sanitize=vptr -fno-sanitize-recover=all -fno-omit-frame-pointer -g
+          CXXFLAGS: -fsanitize=address,undefined -fno-sanitize=vptr -fno-sanitize-recover=all -fno-omit-frame-pointer -g
+          LDFLAGS: -fsanitize=address,undefined
+      # node itself is not instrumented, so the ASan runtime must be preloaded to come first in
+      # the library list. Leak detection is off because it reports node's own allocations.
+      - name: Test under the sanitizers
+        run: LD_PRELOAD="$(gcc -print-file-name=libasan.so)" node --test test/test.js
+        env:
+          ASAN_OPTIONS: detect_leaks=0
+          UBSAN_OPTIONS: print_stacktrace=1
