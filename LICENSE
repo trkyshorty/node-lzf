@@ -27,6 +27,31 @@ POSSIBILITY OF SUCH DAMAGE.
 
 ----------------------------------------------------------------------------
 
-This package bundles liblzf by Marc Alexander Lehmann (src/lzf/), which is
-distributed under the BSD 2-Clause license (or alternatively the GPL v2 or
-later). See the license headers in src/lzf/*.h and src/lzf/*.cc for details.
+This package bundles a modified copy of liblzf (src/lzf/), which is compiled
+into the native addon and the prebuilt binaries. node-lzf uses liblzf under
+the BSD 2-Clause terms below; the original files also offer the GPL v2 or
+later as an alternative. Changes made by node-lzf are marked with
+"node-lzf:" comments in the source files.
+
+Copyright (c) 2000-2010 Marc Alexander Lehmann <schmorp@schmorp.de>
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice,
+   this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
+EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+OF THE POSSIBILITY OF SUCH DAMAGE.

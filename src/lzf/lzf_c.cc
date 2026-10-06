@@ -163,6 +163,7 @@ lzf_compress (const void *const in_data, unsigned int in_len,
 #if STRICT_ALIGN
           && ((ref[1] << 8) | ref[0]) == ((ip[1] << 8) | ip[0])
 #else
+          /* node-lzf: upstream compared `*(u16 *)ref == *(u16 *)ip`; see lzf_load16 in lzfP.h. */
           && lzf_load16 (ref) == lzf_load16 (ip)
 #endif
         )
