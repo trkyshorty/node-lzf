@@ -1,4 +1,4 @@
-## node-lzf
+# node-lzf
 
 [![npm version](https://img.shields.io/npm/v/@trkyshorty/node-lzf.svg)](https://www.npmjs.com/package/@trkyshorty/node-lzf)
 [![prebuild](https://github.com/trkyshorty/node-lzf/actions/workflows/prebuild.yml/badge.svg?branch=master)](https://github.com/trkyshorty/node-lzf/actions/workflows/prebuild.yml)
@@ -15,7 +15,7 @@ LZF advantages:
 - Any liblzf build decodes the output, whatever options it was compressed with.
 - Freely usable (BSD-type license).
 
-### Install
+## Install
 
 ```bash
 npm install @trkyshorty/node-lzf
@@ -35,7 +35,7 @@ On any other platform (Alpine on arm64, for example) it falls back to
 compiling from source via `node-gyp-build`, which requires a C++ toolchain
 and Python.
 
-### Usage
+## Usage
 
 ```javascript
 const lzf = require('@trkyshorty/node-lzf');
@@ -55,7 +55,7 @@ LZF streams do not store the original size, so store `data.length` next to
 the compressed bytes (a length prefix in your framing, for example) and pass
 it back to `decompress`.
 
-#### TypeScript
+### TypeScript
 
 Type definitions are bundled, no `@types` package is needed. The module is
 CommonJS (`export =`), so import it as a namespace — or as a default import
@@ -88,20 +88,20 @@ try {
 }
 ```
 
-### API
+## API
 
 Every function accepts a `Buffer` or any other TypedArray (`Uint8Array`,
 `Float64Array`, ...), read as its raw bytes, and always returns a `Buffer`.
 `DataView` and `ArrayBuffer` are rejected; wrap an `ArrayBuffer` in a
 `Uint8Array` first. Inputs are limited to 1 GiB.
 
-#### `compress(data): Buffer`
+### `compress(data): Buffer`
 
 Returns an LZF-compressed Buffer sized exactly to the result. An empty input
 returns an empty Buffer. Incompressible input can grow slightly (up to
 ~104%).
 
-#### `decompress(data, expectedLength): Buffer`
+### `decompress(data, expectedLength): Buffer`
 
 Returns the decompressed Buffer. `expectedLength` is **required**: pass the
 exact decompressed size, or an upper bound — the result is shrunk to the
@@ -118,7 +118,7 @@ limit that fits your application when it comes from an untrusted source.
 > silently allocated a 999 MB scratch buffer per call — that default has
 > been removed.
 
-#### `compressAsync(data): Promise<Buffer>` / `decompressAsync(data, expectedLength): Promise<Buffer>`
+### `compressAsync(data): Promise<Buffer>` / `decompressAsync(data, expectedLength): Promise<Buffer>`
 
 Same semantics as the sync variants, but the (de)compression runs on the
 libuv thread pool and the returned promise rejects with the errors the sync
@@ -126,7 +126,7 @@ variants would throw. The input is copied before the call returns, so it may
 be modified, reused or transferred right away. Prefer these for payloads
 larger than a few hundred KB on latency-sensitive servers.
 
-#### Errors
+### Errors
 
 Every error has a stable `code` property; match on it rather than on the
 message.
@@ -140,14 +140,14 @@ message.
 | `ERR_LZF_ALLOCATION_FAILED`  | `Error`      | the output, or the async input copy, could not be allocated             |
 | `ERR_LZF_COMPRESSION_FAILED` | `Error`      | liblzf reported a compression failure (not expected in practice)        |
 
-#### Output stability
+### Output stability
 
 Compressed output is a valid LZF stream decodable by any liblzf build. The
 exact compressed bytes are not guaranteed to be identical across calls
 (liblzf's hash table is intentionally left uninitialized for speed) — only
 the roundtrip contract holds.
 
-### Benchmarks
+## Benchmarks
 
 `npm run bench` compares against node's built-in zlib (`deflateRaw`,
 levels 1 and 6) on deterministic datasets. Numbers below from a Windows
@@ -178,7 +178,7 @@ In short: LZF compresses 2–10× faster than zlib at its fastest level, at
 the cost of a worse ratio. Pick LZF when compression latency matters more
 than size (hot network paths); pick zlib/brotli for cold storage.
 
-### Development
+## Development
 
 `npm test` runs the suite against whichever binary `node-gyp-build` resolves:
 `build/Release` when it exists, otherwise the local `prebuilds/` — which are
@@ -194,7 +194,7 @@ builds from source and runs the suite on Linux, Windows and macOS with
 Node 20, 22 and 24, and once more on Linux under AddressSanitizer and
 UndefinedBehaviorSanitizer.
 
-#### Releasing
+### Releasing
 
 Releases are fully automatic: add the changes to `CHANGELOG.md`, bump
 `version` in `package.json` and push to `master`. If that version is not on
@@ -208,12 +208,12 @@ local `npm publish` is refused (`prepublishOnly`), so stale local
 
 ---
 
-### Authors
+## Authors
 
 - Ian Babrou (`ibobrik@gmail.com`) — original author
 - Türkay Tanrikulu (`trky.shorty@gmail.com`) — fork maintainer
 
-### License
+## License
 
 BSD-2-Clause, see [LICENSE](LICENSE). Bundles [liblzf](https://software.schmorp.de/pkg/liblzf.html)
 by Marc Alexander Lehmann (BSD-2-Clause / GPL dual-licensed).
