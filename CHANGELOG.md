@@ -3,7 +3,20 @@
 All notable changes to `@trkyshorty/node-lzf` are listed here. Versions follow
 [Semantic Versioning](https://semver.org/).
 
-## 1.4.0
+## 2.0.0
+
+### Breaking
+
+- Requires Node.js 20 or later (Node.js 18 is end-of-life).
+- Empty input no longer throws: `compress` returns an empty Buffer and an empty
+  stream decompresses to an empty Buffer. Code that relied on the
+  `Input buffer must not be empty` `TypeError` to reject empty data has to
+  check the length itself.
+- Input larger than 1 GiB throws `RangeError` (`ERR_OUT_OF_RANGE`) instead of
+  `TypeError`.
+- Argument error messages were reworded; match on the new `code` property
+  instead of the message. The decompression messages still contain
+  `corrupted input` and `expected length too small`.
 
 ### Fixed
 
@@ -28,8 +41,7 @@ All notable changes to `@trkyshorty/node-lzf` are listed here. Versions follow
   `ERR_OUT_OF_RANGE`, `ERR_LZF_OUTPUT_TOO_SMALL`, `ERR_LZF_CORRUPTED_INPUT`,
   `ERR_LZF_ALLOCATION_FAILED`, `ERR_LZF_COMPRESSION_FAILED`). The type
   definitions export `ErrorCode` and `LzfError`.
-- Empty input: `compress` returns an empty Buffer and an empty stream
-  decompresses to an empty Buffer. `expectedLength` may be `0`.
+- `expectedLength` may be `0`, for an empty stream.
 - Any TypedArray (`Float64Array`, `Int16Array`, `Float16Array`, ...) is
   accepted and read as its raw bytes; the type definitions accept
   `NodeJS.TypedArray`.
@@ -40,12 +52,10 @@ All notable changes to `@trkyshorty/node-lzf` are listed here. Versions follow
 
 - `decompress` allocates at most 88× the input size, the largest expansion an
   LZF stream can encode, so an untrusted `expectedLength` cannot make a small
-  input allocate up to 1 GiB.
-- Input larger than 1 GiB throws `RangeError` (`ERR_OUT_OF_RANGE`) instead of
-  `TypeError`.
-- Argument error messages were reworded. The decompression messages still
-  contain `corrupted input` and `expected length too small`.
-- Requires Node.js 20 or later (Node.js 18 is end-of-life).
+  input allocate up to 1 GiB. A corrupted stream that would exceed this cap
+  now reports `ERR_LZF_CORRUPTED_INPUT` rather than `ERR_LZF_OUTPUT_TOO_SMALL`.
+- `compressAsync`/`decompressAsync` copy their input (see Fixed), so each call
+  in flight holds an extra copy of the input until it settles.
 
 ## 1.3.1 - 2026-09-11
 
