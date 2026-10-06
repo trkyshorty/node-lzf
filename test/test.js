@@ -132,6 +132,16 @@ test('decompress: expectedLength is required and validated', () => {
     assert.throws(() => lzf.decompress(compressed, Number.MAX_SAFE_INTEGER), outOfRange);
 });
 
+test('input: data larger than 1 GiB is rejected with RangeError', async () => {
+    // allocUnsafe skips zero-filling, so the pages are reserved but never touched; the
+    // size check runs before the addon reads or copies any byte.
+    const huge = Buffer.allocUnsafe(1024 * 1024 * 1024 + 1);
+    assert.throws(() => lzf.compress(huge), outOfRange);
+    assert.throws(() => lzf.decompress(huge, 64), outOfRange);
+    await assert.rejects(lzf.compressAsync(huge), outOfRange);
+    await assert.rejects(lzf.decompressAsync(huge, 64), outOfRange);
+});
+
 test('decompress: too-small expectedLength throws with a specific message', () => {
     const data = Buffer.from(lorem);
     const compressed = lzf.compress(data);
@@ -149,6 +159,8 @@ test('decompress: corrupted input throws instead of crashing', () => {
     assert.throws(() => lzf.decompress(Buffer.from([0x1f]), 64), corrupted);
     // truncated back-reference (control byte only)
     assert.throws(() => lzf.decompress(Buffer.from([0x20]), 64), corrupted);
+    // truncated long back-reference: ctrl 0xe0 and its length byte, but no offset byte
+    assert.throws(() => lzf.decompress(Buffer.from([0xe0, 0x05]), 64), corrupted);
     // truncated valid stream
     const compressed = lzf.compress(Buffer.from(lorem.repeat(10)));
     assert.throws(() => lzf.decompress(compressed.subarray(0, 5), lorem.length * 10), corrupted);
