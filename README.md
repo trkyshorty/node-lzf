@@ -1,5 +1,10 @@
 ## node-lzf
 
+[![npm version](https://img.shields.io/npm/v/@trkyshorty/node-lzf.svg)](https://www.npmjs.com/package/@trkyshorty/node-lzf)
+[![prebuild](https://github.com/trkyshorty/node-lzf/actions/workflows/prebuild.yml/badge.svg?branch=master)](https://github.com/trkyshorty/node-lzf/actions/workflows/prebuild.yml)
+[![node](https://img.shields.io/node/v/@trkyshorty/node-lzf.svg)](https://nodejs.org)
+[![license](https://img.shields.io/npm/l/@trkyshorty/node-lzf.svg)](LICENSE)
+
 [LZF](https://software.schmorp.de/pkg/liblzf.html) compression library for Node.js.
 
 LZF advantages:
