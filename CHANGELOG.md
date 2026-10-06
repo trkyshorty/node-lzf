@@ -19,6 +19,8 @@ All notable changes to `@trkyshorty/node-lzf` are listed here. Versions follow
 - The compressor could read out of bounds on Windows ARM64 (32-bit offset
   type), and its unaligned 16-bit load was undefined behavior on x86 with
   gcc/clang.
+- Compressing a 1-byte input read one byte past the end of the input (an
+  upstream liblzf bug found by AddressSanitizer).
 
 ### Added
 
