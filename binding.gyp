@@ -1,4 +1,8 @@
 {
+  # lzf_fault_injection=1 is the test-only coverage build (scripts/coverage-native.js):
+  # it compiles the fault hooks in src/lzf.cc and turns optimisation off so line data
+  # maps 1:1 to the source. Releases and prebuilds always use the default 0.
+  "variables": { "lzf_fault_injection%": 0 },
   "targets": [
     {
       "target_name": "lzf",
@@ -37,7 +41,20 @@
           }
         ],
         [
-          "OS=='win'",
+          "lzf_fault_injection==1",
+          { "defines": [ "NODE_LZF_FAULT_INJECTION" ] }
+        ],
+        [
+          "OS=='win' and lzf_fault_injection==1",
+          {
+            "msvs_settings": {
+              "VCCLCompilerTool": { "Optimization": "0", "WholeProgramOptimization": "false" },
+              "VCLinkerTool": { "LinkTimeCodeGeneration": "0" }
+            }
+          }
+        ],
+        [
+          "OS=='win' and lzf_fault_injection==0",
           {
             "msvs_settings": {
               "VCCLCompilerTool": {

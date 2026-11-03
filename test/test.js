@@ -4,7 +4,13 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const crypto = require('node:crypto');
 
-const lzf = require('../index.js');
+const path = require('node:path');
+
+/* NODE_LZF_BINDING points the suite at a specific addon (the fault-injection
+ * build of `npm run test:coverage:native`); by default index.js resolves it. */
+const lzf = process.env.NODE_LZF_BINDING
+    ? require(path.resolve(process.env.NODE_LZF_BINDING))
+    : require('../index.js');
 
 /* Deterministic pseudo-random buffer so failures are reproducible. */
 function prandomBytes(size, seed) {
@@ -364,4 +370,74 @@ test('wire format: decodes a hand-crafted liblzf stream', () => {
     // and an RLE-style overlapping backref: "a" then copy 15 from off=1 => 16×a
     const rle = Buffer.from([0x00, 0x61, 0xe0, 0x06, 0x00]);
     assert.strictEqual(lzf.decompress(rle, 16).toString(), 'a'.repeat(16));
+});
+
+/* ---- fault injection (coverage build only) ------------------------------
+ * Allocation failures and a compression buffer that is too small cannot be
+ * produced from JavaScript; the coverage build (-Dlzf_fault_injection=1)
+ * exports __injectFault so their error paths are tested. Regular builds and
+ * prebuilds do not export it and these tests are skipped. */
+
+const injectFault = lzf.__injectFault;
+const faultBuild = {
+    skip: typeof injectFault !== 'function' && 'needs the fault-injection build (npm run test:coverage:native)',
+};
+const allocationFailed = lzfError(Error, 'ERR_LZF_ALLOCATION_FAILED');
+const compressionFailed = lzfError(Error, 'ERR_LZF_COMPRESSION_FAILED');
+
+/* Runs fn with a fault armed and always disarms it, even when fn throws. */
+async function withFault(kind, value, fn) {
+    injectFault(kind, value);
+    try {
+        await fn();
+    } finally {
+        injectFault('reset');
+    }
+}
+
+test('fault: sync allocation failure throws a coded Error and leaves the module usable', faultBuild, async () => {
+    const data = Buffer.from(lorem);
+    const compressed = lzf.compress(data);
+    await withFault('alloc', 0, () => assert.throws(() => lzf.compress(data), allocationFailed));
+    await withFault('alloc', 0, () => assert.throws(() => lzf.decompress(compressed, data.length), allocationFailed));
+    assert.ok(lzf.decompress(lzf.compress(data), data.length).equals(data));
+});
+
+test('fault: async rejects when the input copy or the worker allocation fails', faultBuild, async () => {
+    const data = Buffer.from(lorem);
+    const compressed = lzf.compress(data);
+    // 0: the input copy on the calling thread fails, no worker is queued
+    await withFault('alloc', 0, () => assert.rejects(lzf.compressAsync(data), allocationFailed));
+    await withFault('alloc', 0, () => assert.rejects(lzf.decompressAsync(compressed, data.length), allocationFailed));
+    // 1: the copy succeeds and the allocation on the worker thread fails
+    await withFault('alloc', 1, () => assert.rejects(lzf.compressAsync(data), allocationFailed));
+    await withFault('alloc', 1, () => assert.rejects(lzf.decompressAsync(compressed, data.length), allocationFailed));
+    assert.ok((await lzf.decompressAsync(await lzf.compressAsync(data), data.length)).equals(data));
+});
+
+test('fault: a too-small compression buffer fails cleanly at every size', faultBuild, async () => {
+    // Every capacity from 0 up to the real need either fails with the coded
+    // error or produces a stream that decodes back to the input; liblzf must
+    // never write past the buffer (literal, back-reference and tail checks).
+    const inputs = [Buffer.from(lorem), compressibleBytes(600, 7), prandomBytes(300, 11), Buffer.alloc(400, 0x61)];
+    for (const data of inputs) {
+        const need = lzf.compress(data).length;
+        let failures = 0;
+        for (let cap = 0; cap <= need + 2; cap++) {
+            await withFault('compressCapacity', cap, () => {
+                let out;
+                try {
+                    out = lzf.compress(data);
+                } catch (error) {
+                    assert.ok(compressionFailed(error), `cap ${cap}: ${error.code}`);
+                    failures++;
+                    return;
+                }
+                assert.ok(out.length <= cap);
+                assert.ok(lzf.decompress(out, data.length).equals(data));
+            });
+        }
+        assert.ok(failures > 0, 'small capacities must fail');
+    }
+    await withFault('compressCapacity', 1, () => assert.rejects(lzf.compressAsync(Buffer.from(lorem)), compressionFailed));
 });

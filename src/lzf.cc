@@ -4,11 +4,13 @@
 #include <napi.h>
 
 #include <algorithm>
+#include <atomic>
 #include <cerrno>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <string>
 
 #include "lzf/lzf.h"
 
@@ -36,6 +38,32 @@ constexpr size_t kMaxExpansion = 88;
 inline size_t DecompressBound(size_t n) {
     return n > SIZE_MAX / kMaxExpansion ? SIZE_MAX : n * kMaxExpansion;
 }
+
+/* ---- fault injection (coverage builds only) ----------------------------- */
+
+/* Allocation failures and a too-small compression buffer cannot be produced
+ * from JavaScript, so their error paths would stay unexercised. Builds made
+ * with -Dlzf_fault_injection=1 (scripts/coverage-native.js) compile these
+ * hooks and export __injectFault; regular builds and prebuilds do not. */
+#ifdef NODE_LZF_FAULT_INJECTION
+/* Number of allocations to let through before the next one fails; -1 = off. */
+std::atomic<int> g_allocFailAfter{-1};
+/* Upper bound for the compression output buffer; -1 = off. */
+std::atomic<long long> g_compressCapacity{-1};
+
+void* Alloc(size_t size) {
+    if (g_allocFailAfter.load() >= 0 && g_allocFailAfter.fetch_sub(1) == 0) return nullptr;
+    return malloc(size);
+}
+
+size_t CompressCapacity(size_t bound) {
+    long long cap = g_compressCapacity.load();
+    return cap >= 0 ? std::min(bound, static_cast<size_t>(cap)) : bound;
+}
+#else
+inline void* Alloc(size_t size) { return malloc(size); }
+inline size_t CompressCapacity(size_t bound) { return bound; }
+#endif
 
 /* ---- errors ------------------------------------------------------------- */
 
@@ -106,8 +134,8 @@ struct RawResult {
 bool DoCompress(const char* input, size_t inputLength, RawResult* out, Failure* failure) {
     if (inputLength == 0) return true;
 
-    size_t bound = CompressBound(inputLength);
-    char* buffer = static_cast<char*>(malloc(bound));
+    size_t bound = CompressCapacity(CompressBound(inputLength));
+    char* buffer = static_cast<char*>(Alloc(bound));
     if (buffer == nullptr) {
         *failure = kAllocationFailed;
         return false;
@@ -143,7 +171,7 @@ bool DoDecompress(const char* input, size_t inputLength, size_t expectedLength, 
     }
 
     size_t capacity = std::min(expectedLength, DecompressBound(inputLength));
-    char* buffer = static_cast<char*>(malloc(capacity));
+    char* buffer = static_cast<char*>(Alloc(capacity));
     if (buffer == nullptr) {
         *failure = kAllocationFailed;
         return false;
@@ -196,13 +224,12 @@ struct Input {
  * the view's byte length straight from V8, so element types node-addon-api
  * does not know (Float16Array) are measured correctly too. */
 bool GetInput(const Napi::CallbackInfo& info, Input* input, Failure* failure) {
-    if (info.Length() < 1 || !info[0].IsTypedArray()) {
-        *failure = kInvalidData;
-        return false;
-    }
     void* data = nullptr;
     size_t length = 0;
-    if (napi_get_buffer_info(info.Env(), info[0], &data, &length) != napi_ok) {
+    /* napi_get_buffer_info accepts every TypedArray, so after IsTypedArray its
+     * status is a defensive check only and shares the type error. */
+    if (info.Length() < 1 || !info[0].IsTypedArray() ||
+        napi_get_buffer_info(info.Env(), info[0], &data, &length) != napi_ok) {
         *failure = kInvalidData;
         return false;
     }
@@ -253,7 +280,7 @@ class OwnedInput {
 
     bool CopyFrom(const Input& input) {
         if (input.length == 0) return true;
-        data_ = static_cast<char*>(malloc(input.length));
+        data_ = static_cast<char*>(Alloc(input.length));
         if (data_ == nullptr) return false;
         memcpy(data_, input.data, input.length);
         length_ = input.length;
@@ -384,11 +411,31 @@ Napi::Value DecompressAsync(const Napi::CallbackInfo& info) {
     return QueueWorker(env, new DecompressWorker(env, expectedLength), input);
 }
 
+#ifdef NODE_LZF_FAULT_INJECTION
+/* __injectFault("alloc", n): the allocation after the next n ones fails.
+ * __injectFault("compressCapacity", n): compression output is capped at n bytes.
+ * __injectFault("reset"): turns every fault off. */
+Napi::Value InjectFault(const Napi::CallbackInfo& info) {
+    std::string kind = info[0].As<Napi::String>().Utf8Value();
+    long long value = info.Length() > 1 ? info[1].As<Napi::Number>().Int64Value() : -1;
+    if (kind == "alloc") g_allocFailAfter.store(static_cast<int>(value));
+    else if (kind == "compressCapacity") g_compressCapacity.store(value);
+    else {
+        g_allocFailAfter.store(-1);
+        g_compressCapacity.store(-1);
+    }
+    return info.Env().Undefined();
+}
+#endif
+
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
     exports.Set("compress", Napi::Function::New(env, Compress));
     exports.Set("decompress", Napi::Function::New(env, Decompress));
     exports.Set("compressAsync", Napi::Function::New(env, CompressAsync));
     exports.Set("decompressAsync", Napi::Function::New(env, DecompressAsync));
+#ifdef NODE_LZF_FAULT_INJECTION
+    exports.Set("__injectFault", Napi::Function::New(env, InjectFault));
+#endif
     return exports;
 }
 

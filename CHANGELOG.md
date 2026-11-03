@@ -3,6 +3,18 @@
 All notable changes to `@trkyshorty/node-lzf` are listed here. Versions follow
 [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Development
+
+- `npm run test:coverage` enforces 100 % line, branch and function coverage of
+  `index.js`.
+- `npm run test:coverage:native` measures line coverage of the C/C++ sources on
+  Windows with Visual Studio code coverage, using a separate Debug build with
+  test-only fault injection; allocation failures (sync, async input copy and
+  worker thread) and a too-small compression buffer are now tested. Regular
+  builds and prebuilds are unchanged and do not contain the hooks.
+
 ## 2.0.0
 
 ### Breaking
