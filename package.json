@@ -47,6 +47,8 @@
     "build:source": "node-gyp rebuild",
     "test": "node --test test/test.js",
     "test:local": "node-gyp rebuild && node --test test/test.js",
+    "test:coverage": "node --test --experimental-test-coverage --test-coverage-include=index.js --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 test/test.js",
+    "test:coverage:native": "node scripts/coverage-native.js",
     "bench": "node benchmark/benchmark.js"
   },
   "license": "BSD-2-Clause"

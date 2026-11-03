@@ -189,6 +189,24 @@ fresh build. Delete `build/` to test the prebuilds again. Builds use the
 `node-gyp` devDependency rather than the copy bundled with npm, which is too
 old to find Visual Studio 2026 on Node 20.
 
+### Coverage
+
+- `npm run test:coverage` measures the JavaScript entry point (`index.js`) with
+  Node's built-in coverage and fails below 100 % lines, branches and functions
+  (needs Node 22.8 or later for the threshold flags).
+- `npm run test:coverage:native` measures line coverage of the C/C++ sources in
+  `src/` (Windows only; Visual Studio 2022 17.3+ with the C++ workload). It
+  copies `binding.gyp` and `src/` to the git-ignored `build-coverage/`, builds an
+  unoptimised Debug addon there with `--lzf_fault_injection=1`, runs the suite
+  against it (`NODE_LZF_BINDING`) under `Microsoft.CodeCoverage.Console` and
+  fails below 100 %. Your `build/` and `prebuilds/` are left alone. The fault
+  injection build exports a test-only `__injectFault` hook, so allocation
+  failures and a too-small compression buffer are tested too; those tests are
+  skipped against regular builds. Branch coverage of the native code is not
+  measured (the Visual Studio tool reports lines only).
+- Measured on 3 November 2026: `index.js` 100 % lines/branches/functions;
+  `src/lzf.cc`, `src/lzf/lzf_c.cc` and `src/lzf/lzf_d.cc` 100 % lines.
+
 The `test` GitHub Actions workflow runs on every push and pull request: it
 builds from source and runs the suite on Linux, Windows and macOS with
 Node 20, 22 and 24, and once more on Linux under AddressSanitizer and
